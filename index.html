@@ -1403,7 +1403,33 @@
         let constructions = JSON.parse(localStorage.getItem('constructions') || '[]');
         let companies = JSON.parse(localStorage.getItem('companies') || '[]');
         let inspectors = JSON.parse(localStorage.getItem('inspectors') || '[]');
-        let inspections = JSON.parse(localStorage.getItem('inspections') || '[]');
+        
+        // inspectionsデータのバリデーション
+        let inspections = [];
+        try {
+            const rawInspections = JSON.parse(localStorage.getItem('inspections') || '[]');
+            // 有効なデータのみをフィルタリング
+            inspections = rawInspections.filter(insp => {
+                return insp && 
+                       insp.id && 
+                       insp.date && 
+                       insp.constructionId && 
+                       insp.inspectorId &&
+                       insp.results && 
+                       typeof insp.results === 'object';
+            });
+            
+            // フィルタリング後のデータが元と異なる場合は保存し直す
+            if (inspections.length !== rawInspections.length) {
+                console.log(`不正なデータを${rawInspections.length - inspections.length}件除外しました`);
+                localStorage.setItem('inspections', JSON.stringify(inspections));
+            }
+        } catch (e) {
+            console.error('inspectionsデータの読み込みエラー:', e);
+            inspections = [];
+            localStorage.setItem('inspections', JSON.stringify([]));
+        }
+        
         let editingId = null;
         let autoBackupEnabled = localStorage.getItem('autoBackupEnabled') === 'true';
         let autoBackupInterval = null;
@@ -1905,12 +1931,17 @@
             tbody.innerHTML = inspections.map((insp, index) => {
                 const construction = constructions.find(c => c.id == insp.constructionId);
                 const inspector = inspectors.find(i => i.id == insp.inspectorId);
-                const issueCount = Object.values(insp.results).filter(r => r === '△' || r === '×').length;
+                
+                // resultsが存在することを確認してからカウント
+                let issueCount = 0;
+                if (insp.results && typeof insp.results === 'object') {
+                    issueCount = Object.values(insp.results).filter(r => r === '△' || r === '×').length;
+                }
 
                 return `
                     <tr>
                         <td>${index + 1}</td>
-                        <td>${insp.date}</td>
+                        <td>${insp.date || '-'}</td>
                         <td>${construction ? construction.name : '-'}</td>
                         <td>${construction ? (construction.siteName || '-') : '-'}</td>
                         <td>${inspector ? inspector.name : '-'}</td>
@@ -1934,7 +1965,7 @@
             let filtered = inspections;
 
             if (month) {
-                filtered = filtered.filter(i => i.date.startsWith(month));
+                filtered = filtered.filter(i => i.date && i.date.startsWith(month));
             }
 
             if (constructionId) {
@@ -1955,12 +1986,17 @@
             tbody.innerHTML = filtered.map((insp, index) => {
                 const construction = constructions.find(c => c.id == insp.constructionId);
                 const inspector = inspectors.find(i => i.id == insp.inspectorId);
-                const issueCount = Object.values(insp.results).filter(r => r === '△' || r === '×').length;
+                
+                // resultsが存在することを確認してからカウント
+                let issueCount = 0;
+                if (insp.results && typeof insp.results === 'object') {
+                    issueCount = Object.values(insp.results).filter(r => r === '△' || r === '×').length;
+                }
 
                 return `
                     <tr>
                         <td>${index + 1}</td>
-                        <td>${insp.date}</td>
+                        <td>${insp.date || '-'}</td>
                         <td>${construction ? construction.name : '-'}</td>
                         <td>${construction ? (construction.siteName || '-') : '-'}</td>
                         <td>${inspector ? inspector.name : '-'}</td>
